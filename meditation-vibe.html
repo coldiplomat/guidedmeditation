@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Breathing Vibration Meditation</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f2f6f9;
+      color: #222;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+      transition: background 0.3s;
+    }
+    h1 { margin-bottom: 1em; }
+    button {
+      margin: 0.5em;
+      padding: 0.7em 1.5em;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 0.5em;
+      background: #4a90e2;
+      color: white;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+    #phase {
+      font-size: 2em;
+      margin-top: 1em;
+    }
+  </style>
+</head>
+<body>
+  <h1>Breathing Vibration Meditation</h1>
+  <button id="start">Start</button>
+  <button id="reset" disabled>Reset</button>
+  <div id="phase">Ready</div>
+
+  <script>
+    const TOTAL_ROUNDS = 60;         // 60 breathing cycles
+    const INHALE_DURATION = 3000;    // 3 seconds
+    const EXHALE_DURATION = 4000;    // 4 seconds
+
+    const INHALE_PATTERN = [3000];   // continuous 3s vibration
+    const EXHALE_PATTERN = [500, 200, 500, 200, 500, 200, 500]; // rhythmic 4s pattern
+
+    let currentRound = 0;
+    let running = false;
+    let wakeLock = null;
+
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => {
+            console.log('Screen Wake Lock released');
+          });
+          console.log('Screen Wake Lock active');
+        }
+      } catch (err) {
+        console.error(`Wake Lock error: ${err.name}, ${err.message}`);
+      }
+    }
+
+    function releaseWakeLock() {
+      if (wakeLock) {
+        wakeLock.release();
+        wakeLock = null;
+      }
+    }
+
+    function vibrate(pattern) {
+      if (navigator.vibrate) navigator.vibrate(pattern);
+    }
+
+    function flash(color) {
+      document.body.style.background = color;
+      setTimeout(() => document.body.style.background = "#f2f6f9", 300);
+    }
+
+    function startBreathing() {
+      if (running) return;
+      running = true;
+      currentRound = 0;
+      document.getElementById('start').disabled = true;
+      document.getElementById('reset').disabled = false;
+      requestWakeLock();
+      breatheCycle();
+    }
+
+    function breatheCycle() {
+      if (currentRound >= TOTAL_ROUNDS) {
+        document.getElementById('phase').textContent = "Session Complete";
+        document.getElementById('start').disabled = false;
+        document.getElementById('reset').disabled = true;
+        running = false;
+        releaseWakeLock();
+        vibrate([500, 150, 500, 150, 800]); // ending signal
+        return;
+      }
+
+      // --- INHALE phase ---
+      document.getElementById('phase').textContent = "Inhale";
+      flash("#b3e5fc");
+      vibrate(INHALE_PATTERN);
+
+      setTimeout(() => {
+        // --- EXHALE phase ---
+        document.getElementById('phase').textContent = "Exhale";
+        flash("#c8e6c9");
+        vibrate(EXHALE_PATTERN);
+
+        currentRound++;
+        if (running) {
+          setTimeout(breatheCycle, EXHALE_DURATION);
+        }
+      }, INHALE_DURATION);
+    }
+
+    document.getElementById('start').addEventListener('click', startBreathing);
+
+    document.getElementById('reset').addEventListener('click', () => {
+      running = false;
+      navigator.vibrate(0); // stop vibration
+      releaseWakeLock();
+      document.getElementById('phase').textContent = "Reset";
+      document.getElementById('start').disabled = false;
+      document.getElementById('reset').disabled = true;
+      document.body.style.background = "#f2f6f9";
+    });
+
+    // Re-request wake lock when page becomes visible again (some browsers release it automatically)
+    document.addEventListener('visibilitychange', () => {
+      if (wakeLock !== null && document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    });
+  </script>
+</body>
+</html>
