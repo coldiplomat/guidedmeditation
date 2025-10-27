@@ -15,7 +15,6 @@
       justify-content: center;
       height: 100vh;
       text-align: center;
-      transition: background 0.3s;
     }
     button {
       margin: 0.5em;
@@ -26,26 +25,28 @@
       background: #4a90e2;
       color: white;
       cursor: pointer;
-      transition: background 0.2s;
     }
     button:disabled { background: #aaa; cursor: not-allowed; }
   </style>
 </head>
 <body>
+
   <button id="start">Start</button>
   <button id="reset" disabled>Reset</button>
 
-  <!-- Hidden silent video to keep screen awake -->
+  <!-- Hidden silent video for screen-wake fallback -->
   <video id="nosleep" playsinline muted loop style="display:none">
     <source src="data:video/mp4;base64,AAAAHGZ0eXBtcDQyAAAAAG1wNDFtcDQxaXNvbQAA" type="video/mp4">
   </video>
 
   <script>
     const TOTAL_ROUNDS = 60;
-    const INHALE_DURATION = 3000;
-    const EXHALE_DURATION = 4000;
-    const INHALE_PATTERN = [3000]; 
-    const EXHALE_PATTERN = [500, 200, 500, 200, 500, 200, 500]; 
+    const INHALE_DURATION = 2500;  // 2.5 seconds
+    const PAUSE_DURATION = 500;    // 0.5 second
+    const EXHALE_DURATION = 4000;  // 4 seconds
+
+    const INHALE_PATTERN = [2500]; 
+    const EXHALE_PATTERN = [400, 200, 400, 200, 400, 200, 400]; // ~4s rhythmic vibration
 
     let currentRound = 0;
     let running = false;
@@ -63,10 +64,9 @@
       if (wakeLock) { wakeLock.release(); wakeLock = null; }
     }
 
+    function vibrate(pattern) { if (navigator.vibrate) navigator.vibrate(pattern); }
     function startNoSleep() { document.getElementById('nosleep').play().catch(()=>{}); }
     function stopNoSleep() { document.getElementById('nosleep').pause(); }
-
-    function vibrate(pattern) { if (navigator.vibrate) navigator.vibrate(pattern); }
 
     function startBreathing() {
       if (running) return;
@@ -78,33 +78,40 @@
       requestWakeLock();
       startNoSleep();
 
-      // 3-second get-ready period
+      // 3-second preparation delay
       setTimeout(breatheCycle, 3000);
     }
 
     function breatheCycle() {
       if (currentRound >= TOTAL_ROUNDS) {
+        // End of full session
         document.getElementById('start').disabled = false;
         document.getElementById('reset').disabled = true;
         running = false;
         releaseWakeLock();
         stopNoSleep();
-        vibrate([500, 150, 500, 150, 800]);
+        vibrate([500, 150, 500, 150, 800]); // completion signal
         return;
       }
 
-      // Inhale vibration
+      // INHALE vibration
       vibrate(INHALE_PATTERN);
 
+      // Silent pause before exhale
       setTimeout(() => {
-        // Exhale vibration
+        // EXHALE vibration
         vibrate(EXHALE_PATTERN);
+
         currentRound++;
-        if (running) setTimeout(breatheCycle, EXHALE_DURATION);
-      }, INHALE_DURATION);
+        if (running) {
+          setTimeout(breatheCycle, EXHALE_DURATION);
+        }
+      }, INHALE_DURATION + PAUSE_DURATION);
+
     }
 
     document.getElementById('start').addEventListener('click', startBreathing);
+
     document.getElementById('reset').addEventListener('click', () => {
       running = false;
       navigator.vibrate(0);
@@ -120,5 +127,6 @@
       }
     });
   </script>
+
 </body>
 </html>
